@@ -26,7 +26,7 @@ yolo::YOLO::YOLO(const utils::InitParameter& param) : m_param(param)
     CHECK(cudaMalloc(&m_output_idx_device, m_param.batch_size * m_param.topK * sizeof(int)));
     CHECK(cudaMalloc(&m_output_conf_device, m_param.batch_size * m_param.topK * sizeof(float)));
     m_output_objects_host = new float[output_objects_size];
-    m_objectss.resize(param.batch_size);
+    m_objects.resize(param.batch_size);
 }
 
 yolo::YOLO::~YOLO()
@@ -185,14 +185,48 @@ void yolo::YOLO::copy(const std::vector<cv::Mat>& imgsBatch)
 
 void yolo::YOLO::preprocess(const std::vector<cv::Mat>& imgsBatch)
 {
-    resizeDevice(m_param.batch_size, m_input_src_device, m_param.src_w, m_param.src_h,
-        m_input_resize_device, m_param.dst_w, m_param.dst_h, 114, m_dst2src);
-    bgr2rgbDevice(m_param.batch_size, m_input_resize_device, m_param.dst_w, m_param.dst_h,
-        m_input_rgb_device, m_param.dst_w, m_param.dst_h);
-    normDevice(m_param.batch_size, m_input_rgb_device, m_param.dst_w, m_param.dst_h,
-        m_input_norm_device, m_param.dst_w, m_param.dst_h, m_param);
-    hwc2chwDevice(m_param.batch_size, m_input_norm_device, m_param.dst_w, m_param.dst_h,
-        m_input_hwc_device, m_param.dst_w, m_param.dst_h);
+    resizeDevice(
+            m_param.batch_size,
+            m_input_src_device,
+            m_param.src_w,
+            m_param.src_h,
+            m_input_resize_device,
+            m_param.dst_w,
+            m_param.dst_h,
+            114,
+            m_dst2src
+    );
+
+    bgr2rgbDevice(
+            m_param.batch_size,
+            m_input_resize_device,
+            m_param.dst_w,
+            m_param.dst_h,
+            m_input_rgb_device,
+            m_param.dst_w,
+            m_param.dst_h
+    );
+
+    normDevice(
+            m_param.batch_size,
+            m_input_rgb_device,
+            m_param.dst_w,
+            m_param.dst_h,
+            m_input_norm_device,
+            m_param.dst_w,
+            m_param.dst_h,
+            m_param
+    );
+
+    hwc2chwDevice(
+            m_param.batch_size,
+            m_input_norm_device,
+            m_param.dst_w,
+            m_param.dst_h,
+            m_input_hwc_device,
+            m_param.dst_w,
+            m_param.dst_h
+    );
 }
 
 bool yolo::YOLO::infer()
@@ -204,16 +238,36 @@ bool yolo::YOLO::infer()
 
 void yolo::YOLO::postprocess(const std::vector<cv::Mat>& imgsBatch)
 {
-    decodeDevice(m_param, m_output_src_device, 5 + m_param.num_class, m_total_objects, m_output_area,
-        m_output_objects_device, m_output_objects_width, m_param.topK);
+    decodeDevice(
+            m_param,
+            m_output_src_device,
+            5 + m_param.num_class,
+            m_total_objects,
+            m_output_area,
+            m_output_objects_device,
+            m_output_objects_width,
+            m_param.topK
+    );
 
     // nmsv1(nms faster)
-    nmsDeviceV1(m_param, m_output_objects_device, m_output_objects_width, m_param.topK, m_param.topK * m_output_objects_width + 1);
+    nmsDeviceV1(
+            m_param,
+            m_output_objects_device,
+            m_output_objects_width,
+            m_param.topK,
+            m_param.topK * m_output_objects_width + 1
+    );
 
     // nmsv2(nms sort)
     //nmsDeviceV2(m_param, m_output_objects_device, m_output_objects_width, m_param.topK, m_param.topK * m_output_objects_width + 1, m_output_idx_device, m_output_conf_device);
 
-    CHECK(cudaMemcpy(m_output_objects_host, m_output_objects_device, m_param.batch_size * sizeof(float) * (1 + 7 * m_param.topK), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(
+            m_output_objects_host,
+            m_output_objects_device,
+            m_param.batch_size * sizeof(float) * (1 + 7 * m_param.topK),
+            cudaMemcpyDeviceToHost
+    ));
+
     for (size_t bi = 0; bi < imgsBatch.size(); bi++)
     {
         int num_boxes = std::min((int)(m_output_objects_host + bi * (m_param.topK * m_output_objects_width + 1))[0], m_param.topK);
@@ -227,7 +281,7 @@ void yolo::YOLO::postprocess(const std::vector<cv::Mat>& imgsBatch)
                 float y_lt = m_dst2src.v3 * ptr[0] + m_dst2src.v4 * ptr[1] + m_dst2src.v5;
                 float x_rb = m_dst2src.v0 * ptr[2] + m_dst2src.v1 * ptr[3] + m_dst2src.v2; 
                 float y_rb = m_dst2src.v3 * ptr[2] + m_dst2src.v4 * ptr[3] + m_dst2src.v5;
-                m_objectss[bi].emplace_back(x_lt, y_lt, x_rb, y_rb, ptr[4], (int)ptr[5]);
+                m_objects[bi].emplace_back(x_lt, y_lt, x_rb, y_rb, ptr[4], (int)ptr[5]);
             }
         }
    
@@ -235,17 +289,21 @@ void yolo::YOLO::postprocess(const std::vector<cv::Mat>& imgsBatch)
 
 }
 
-std::vector<std::vector<utils::Box>> yolo::YOLO::getObjectss() const
+std::vector<std::vector<utils::Box>> yolo::YOLO::getObjects() const
 {
-    return this->m_objectss;
+    return this->m_objects;
 }
 
 void yolo::YOLO::reset()
 {
-    CHECK(cudaMemset(m_output_objects_device, 0, sizeof(float) * m_param.batch_size * (1 + 7 * m_param.topK)));
-    for (size_t bi = 0; bi < m_param.batch_size; bi++)
-    {
-        m_objectss[bi].clear();
+    CHECK(cudaMemset(
+            m_output_objects_device,
+            0,
+            sizeof(float) * m_param.batch_size * (1 + 7 * m_param.topK)
+    ));
+
+    for (size_t bi = 0; bi < m_param.batch_size; bi++){
+        m_objects[bi].clear();
     }
 }
 

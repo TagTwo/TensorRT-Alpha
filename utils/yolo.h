@@ -21,7 +21,7 @@ namespace yolo
         virtual void reset();
 
     public:
-        std::vector<std::vector<utils::Box>> getObjectss() const;
+        std::vector<std::vector<utils::Box>> getObjects() const;
 
     protected:
         std::shared_ptr<nvinfer1::ICudaEngine> m_engine;
@@ -32,7 +32,7 @@ namespace yolo
         nvinfer1::Dims m_output_dims;   
         int m_output_area;
         int m_total_objects;
-        std::vector<std::vector<utils::Box>> m_objectss;
+        std::vector<std::vector<utils::Box>> m_objects;
         utils::AffineMat m_dst2src;     
 
         // input

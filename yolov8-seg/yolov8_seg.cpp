@@ -140,7 +140,7 @@ void YOLOv8Seg::reset()
     CHECK(cudaMemset(m_output_objects_device, 0, sizeof(float) * m_param.batch_size * m_output_obj_area));
 }
 
-void YOLOv8Seg::showAndSave(const std::vector<std::string>& classNames, const int& cvDelayTime, std::vector<cv::Mat>& imgsBatch)
+void YOLOv8Seg::showAndSave(const std::vector<std::string>& classNames, const int& cvDelayTime, const std::vector<cv::Mat>& imgsBatch)
 {
     cv::Point bbox_points[1][4];
     const cv::Point* bbox_point0[1] = { bbox_points[0] };
@@ -158,7 +158,7 @@ void YOLOv8Seg::showAndSave(const std::vector<std::string>& classNames, const in
             if (ptr[6])
             {
                 int label = ptr[5];
-                cv::Scalar color = utils::Colors::color80[label];
+                const cv::Scalar& color = utils::Colors::color80.at(label);
          
                 Eigen::Map<Eigen::MatrixXf> img_ojb_seg_(ptr + 7, m_output_seg_h, 1); 
                 m_mask_eigen160 = img_seg_ * img_ojb_seg_;

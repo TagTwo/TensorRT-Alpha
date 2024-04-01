@@ -15,8 +15,7 @@ public:
 	virtual void reset();
 
 public:
-	void showAndSave(const std::vector<std::string>& classNames,
-		const int& cvDelayTime, std::vector<cv::Mat>& imgsBatch);
+	void showAndSave(const std::vector<std::string>& classNames, const int& cvDelayTime, const std::vector<cv::Mat>& imgsBatch);
 
 private:
 	float* m_output_src_transpose_device;
