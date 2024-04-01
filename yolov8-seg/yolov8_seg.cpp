@@ -304,7 +304,7 @@ void YOLOv8Seg::getObjects(
                 cv::INTER_LINEAR
         );
         mask_instance = mask_instance > 0.5f;
-
+        
         objects.emplace_back();
         auto &object = objects.back();
         object.rect = roi_src;
