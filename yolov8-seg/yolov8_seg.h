@@ -29,6 +29,12 @@ public:
     void showAndSave(const std::vector<std::string> &classNames, const int &cvDelayTime,
                      const std::vector<cv::Mat> &imgsBatch);
 
+
+    void getObjects(
+            std::vector<Object> &objects,
+            const size_t imgIndex
+    );
+
 private:
     float *m_output_src_transpose_device;
     float *m_output_seg_device; // eg:116 * 8400, 116=4+80+32
@@ -54,8 +60,4 @@ private:
     cv::Mat m_img_canvas;
 
 
-    void getObjects(
-            std::vector<Object> &objects,
-            const size_t imgIndex
-    );
 };
