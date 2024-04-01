@@ -41,7 +41,9 @@ __global__ void decode_yolov8_seg_device_kernel(int batch_size, int  num_class, 
 	float top = cy - height * 0.5f;
 	float right = cx + width * 0.5f;
 	float bottom = cy + height * 0.5f;
+
 	float* pout_item = dst + dy * dstArea + 1 + index * dstWidth;
+
 	*pout_item++ = left;
 	*pout_item++ = top;
 	*pout_item++ = right;
@@ -56,7 +58,8 @@ void yolov8seg::decodeDevice(utils::InitParameter param, float* src, int srcWidt
 {
 	dim3 block_size(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid_size((srcHeight + BLOCK_SIZE - 1) / BLOCK_SIZE,
-		(param.batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+(param.batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+
 	int dstArea = 1 + dstWidth * dstHeight;
 	decode_yolov8_seg_device_kernel <<< grid_size, block_size, 0, nullptr >>> (param.batch_size, param.num_class, param.topK, param.conf_thresh,
 		src, srcWidth, srcHeight, srcArea,
