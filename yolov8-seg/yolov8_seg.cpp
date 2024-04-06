@@ -33,6 +33,16 @@ YOLOv8Seg::~YOLOv8Seg() {
 }
 
 bool YOLOv8Seg::init(const std::vector<unsigned char> &trtFile) {
+
+    // Set the device index
+    if (auto ret = cudaSetDevice(m_param.device_index); ret != 0) {
+        int numGPUs;
+        cudaGetDeviceCount(&numGPUs);
+        auto errMsg = "Unable to set GPU device index to: " + std::to_string(m_param.device_index) +
+                      ". Note, your device has " + std::to_string(numGPUs) + " CUDA-capable GPU(s).";
+        throw std::runtime_error(errMsg);
+    }
+
     if (trtFile.empty()) {
         return false;
     }
@@ -304,7 +314,7 @@ void YOLOv8Seg::getObjects(
                 cv::INTER_LINEAR
         );
         mask_instance = mask_instance > 0.5f;
-        
+
         objects.emplace_back();
         auto &object = objects.back();
         object.rect = roi_src;
