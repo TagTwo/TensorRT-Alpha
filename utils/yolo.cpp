@@ -8,11 +8,48 @@ yolo::YOLO::YOLO(const utils::InitParameter& param) : m_param(param)
     m_input_rgb_device = nullptr;
     m_input_norm_device = nullptr;
     m_input_hwc_device = nullptr;
-    CHECK(cudaMalloc(&m_input_src_device,    param.batch_size * 3 * param.src_h * param.src_w * sizeof(unsigned char)));
-    CHECK(cudaMalloc(&m_input_resize_device, param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)));
-    CHECK(cudaMalloc(&m_input_rgb_device,    param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)));
-    CHECK(cudaMalloc(&m_input_norm_device,   param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)));
-    CHECK(cudaMalloc(&m_input_hwc_device,    param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)));
+
+    if(!CHECK(cudaMalloc(&m_input_src_device, param.batch_size * 3 * param.src_h * param.src_w * sizeof(unsigned char)))) {
+        std::cerr << "Failed to allocate memory for m_input_src_device\n";
+        //
+        cudaFree(m_input_src_device);
+        return; // or exit, or throw, depending on your error handling strategy
+    }
+
+    if(!CHECK(cudaMalloc(&m_input_resize_device, param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_input_resize_device\n";
+        // Cleanup
+        cudaFree(m_input_src_device); // Example of cleanup
+        return;
+    }
+
+    if(!CHECK(cudaMalloc(&m_input_rgb_device, param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_input_rgb_device\n";
+        // Cleanup
+        cudaFree(m_input_src_device);
+        cudaFree(m_input_resize_device);
+        return;
+    }
+
+    if(!CHECK(cudaMalloc(&m_input_norm_device, param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_input_norm_device\n";
+        // Cleanup
+        cudaFree(m_input_src_device);
+        cudaFree(m_input_resize_device);
+        cudaFree(m_input_rgb_device);
+        return;
+    }
+
+    if(!CHECK(cudaMalloc(&m_input_hwc_device, param.batch_size * 3 * param.dst_h * param.dst_w * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_input_hwc_device\n";
+        // Cleanup
+        cudaFree(m_input_src_device);
+        cudaFree(m_input_resize_device);
+        cudaFree(m_input_rgb_device);
+        cudaFree(m_input_norm_device);
+        return;
+    }
+
 
     // output
     m_output_src_device = nullptr;
@@ -22,9 +59,26 @@ yolo::YOLO::YOLO(const utils::InitParameter& param) : m_param(param)
     m_output_idx_device = nullptr;
     m_output_conf_device = nullptr;
     int output_objects_size = param.batch_size * (1 + param.topK * m_output_objects_width); // 1: count
-    CHECK(cudaMalloc(&m_output_objects_device, output_objects_size * sizeof(float)));
-    CHECK(cudaMalloc(&m_output_idx_device, m_param.batch_size * m_param.topK * sizeof(int)));
-    CHECK(cudaMalloc(&m_output_conf_device, m_param.batch_size * m_param.topK * sizeof(float)));
+
+    if (!CHECK(cudaMalloc(&m_output_objects_device, output_objects_size * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_output_objects_device\n";
+        // Cleanup previously allocated resources
+        return;
+    }
+
+    if (!CHECK(cudaMalloc(&m_output_idx_device, m_param.batch_size * m_param.topK * sizeof(int)))) {
+        std::cerr << "Failed to allocate memory for m_output_idx_device\n";
+        // Cleanup previously allocated resources
+        return;
+    }
+
+    if (!CHECK(cudaMalloc(&m_output_conf_device, m_param.batch_size * m_param.topK * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_output_conf_device\n";
+        // Cleanup previously allocated resources);
+        return;
+    }
+
+
     m_output_objects_host = new float[output_objects_size];
     m_objects.resize(param.batch_size);
 }
@@ -83,12 +137,17 @@ bool yolo::YOLO::init(const std::vector<unsigned char>& trtFile)
             m_output_area *= m_output_dims.d[i];
         }
     }
-    CHECK(cudaMalloc(&m_output_src_device, m_param.batch_size * m_output_area * sizeof(float)));
+
+    if (!CHECK(cudaMalloc(&m_output_src_device, m_param.batch_size * m_output_area * sizeof(float)))) {
+        std::cerr << "Failed to allocate memory for m_output_src_device\n";
+    }
+
     float a = float(m_param.dst_h) / m_param.src_h;
     float b = float(m_param.dst_w) / m_param.src_w;
     float scale = a < b ? a : b;
     cv::Mat src2dst = (cv::Mat_<float>(2, 3) << scale, 0.f, (-scale * m_param.src_w + m_param.dst_w + scale - 1) * 0.5,
         0.f, scale, (-scale * m_param.src_h + m_param.dst_h + scale - 1) * 0.5);
+
     cv::Mat dst2src = cv::Mat::zeros(2, 3, CV_32FC1);
     cv::invertAffineTransform(src2dst, dst2src);
     m_dst2src.v0 = dst2src.ptr<float>(0)[0];
@@ -106,7 +165,7 @@ void yolo::YOLO::check()
     nvinfer1::Dims dims;
 
     sample::gLogInfo << "the engine's info:" << std::endl;
-    for (auto layer_name : m_param.input_output_names)
+    for (const auto& layer_name : m_param.input_output_names)
     {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_engine->getBindingDimensions(idx);
@@ -118,7 +177,7 @@ void yolo::YOLO::check()
         sample::gLogInfo << std::endl;
     }
     sample::gLogInfo << "the context's info:" << std::endl;
-    for (auto layer_name : m_param.input_output_names)
+    for (const auto& layer_name : m_param.input_output_names)
     {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_context->getBindingDimensions(idx);
@@ -132,7 +191,7 @@ void yolo::YOLO::check()
 }
 void yolo::YOLO::copy(const std::vector<cv::Mat>& imgsBatch)
 {
-#if 0 
+#if 0
     cv::Mat img_fp32 = cv::Mat::zeros(imgsBatch[0].size(), CV_32FC3); // todo 
     cudaHostRegister(img_fp32.data, img_fp32.elemSize() * img_fp32.total(), cudaHostRegisterPortable);
     float* pi = m_input_src_device;
@@ -157,13 +216,15 @@ void yolo::YOLO::copy(const std::vector<cv::Mat>& imgsBatch)
     }
 #endif
 
-    // update 20230302, faster. 
+    // update 20230302, faster.
     // 1. move uint8_to_float in cuda kernel function. For 8*3*1920*1080, cost time 15ms -> 3.9ms
     // 2. Todo
     unsigned char* pi = m_input_src_device;
-    for (size_t i = 0; i < imgsBatch.size(); i++)
+    for (const auto & i : imgsBatch)
     {
-        CHECK(cudaMemcpy(pi, imgsBatch[i].data, sizeof(unsigned char) * 3 * m_param.src_h * m_param.src_w, cudaMemcpyHostToDevice));
+        if(!CHECK(cudaMemcpy(pi, i.data, sizeof(unsigned char) * 3 * m_param.src_h * m_param.src_w, cudaMemcpyHostToDevice))){
+            std::cerr << "Failed to copy frame to device" << std::endl;
+        }
         pi += 3 * m_param.src_h * m_param.src_w;
     }
 
@@ -261,12 +322,14 @@ void yolo::YOLO::postprocess(const std::vector<cv::Mat>& imgsBatch)
     // nmsv2(nms sort)
     //nmsDeviceV2(m_param, m_output_objects_device, m_output_objects_width, m_param.topK, m_param.topK * m_output_objects_width + 1, m_output_idx_device, m_output_conf_device);
 
-    CHECK(cudaMemcpy(
+    if(!CHECK(cudaMemcpy(
             m_output_objects_host,
             m_output_objects_device,
             m_param.batch_size * sizeof(float) * (1 + 7 * m_param.topK),
             cudaMemcpyDeviceToHost
-    ));
+    ))){
+        std::cerr << "Failed to copy objects to host" << std::endl;
+    }
 
     for (size_t bi = 0; bi < imgsBatch.size(); bi++)
     {
@@ -296,11 +359,13 @@ std::vector<std::vector<utils::Box>> yolo::YOLO::getObjects() const
 
 void yolo::YOLO::reset()
 {
-    CHECK(cudaMemset(
+    if(!CHECK(cudaMemset(
             m_output_objects_device,
             0,
             sizeof(float) * m_param.batch_size * (1 + 7 * m_param.topK)
-    ));
+    ))){
+        std::cerr << "Failed to reset model" << std::endl;
+    }
 
     for (size_t bi = 0; bi < m_param.batch_size; bi++){
         m_objects[bi].clear();
