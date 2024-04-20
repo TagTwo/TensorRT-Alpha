@@ -1,6 +1,7 @@
 #include"yolov8_seg.h"
 #include"decode_yolov8_seg.h"
 
+using namespace TagTwo::AI;
 
 YOLOv8Seg::YOLOv8Seg(const utils::InitParameter &param) : yolo::YOLO(param) {
     m_output_objects_device = nullptr;

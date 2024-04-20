@@ -4,9 +4,7 @@
 #include<opencv2/core/eigen.hpp>
 #include "../utils/yolo.h"
 #include "../utils/utils.h"
-
-// TODO - Remove
-#include "../../../../../include/ai_engine/yolov8/v1/yolov8.h"
+#include "TagTwo/Utility/common/ai_globals.h"
 
 
 class YOLOv8Seg : public yolo::YOLO {
@@ -31,7 +29,7 @@ public:
 
 
     void getObjects(
-            std::vector<Object> &objects,
+            std::vector<TagTwo::AI::Object> &objects,
             const size_t imgIndex
     );
 
