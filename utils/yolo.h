@@ -16,13 +16,13 @@ namespace yolo {
 
         virtual void check();
 
-        virtual void copy(const std::vector<cv::Mat> &imgsBatch);
+        virtual void copy(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch);
 
-        virtual void preprocess(const std::vector<cv::Mat> &imgsBatch);
+        virtual void preprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch);
 
         virtual bool infer();
 
-        virtual void postprocess(const std::vector<cv::Mat> &imgsBatch);
+        virtual void postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch);
 
         virtual void reset();
 
