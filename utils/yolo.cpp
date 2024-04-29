@@ -156,7 +156,7 @@ void yolo::YOLO::copy(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
 
 #if 0 // cuda stream
     cudaStream_t streams[32];
-    for (int i = 0; i < imgsBatch.size(); i++) 
+    for (int i = 0; i < imgsBatch.size(); i++)
     {
         CHECK(cudaStreamCreate(&streams[i]));
     }
