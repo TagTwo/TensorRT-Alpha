@@ -1,7 +1,29 @@
+#include <spdlog/spdlog.h>
 #include"yolov8_seg.h"
 #include"decode_yolov8_seg.h"
 
 using namespace TagTwo::AI;
+
+class SPDLOG_Logger : public sample::Logger {
+
+    void log(Severity severity, const char *msg) noexcept override {
+        if (severity == Severity::kINFO) {
+            SPDLOG_INFO("[TRT] {}", msg);
+        } else if (severity == Severity::kWARNING) {
+            SPDLOG_WARN("[TRT] {}", msg);
+        } else if (severity == Severity::kERROR) {
+            SPDLOG_ERROR("[TRT] {}", msg);
+
+        } else if (severity == Severity::kINTERNAL_ERROR) {
+            SPDLOG_CRITICAL("[TRT] {}", msg);
+        } else {
+            SPDLOG_DEBUG("[TRT] {}", msg);
+        }
+
+
+    }
+
+};
 
 YOLOv8Seg::YOLOv8Seg(const utils::InitParameter &param) : yolo::YOLO(param) {
     m_output_objects_device = nullptr;
@@ -11,16 +33,19 @@ YOLOv8Seg::YOLOv8Seg(const utils::InitParameter &param) : yolo::YOLO(param) {
     m_output_seg_w = 160 * 160;
     m_output_seg_h = 32;
     int output_objects_size = param.batch_size * m_output_obj_area;
+    // Allocate device memory for output objects
     CHECK(cudaMalloc(&m_output_objects_device, output_objects_size * sizeof(float)));
-    m_output_objects_host = new float[output_objects_size];
+
+    // Allocate pinned host memory for output objects
+    CHECK(cudaMallocHost((void **) &m_output_objects_host, output_objects_size * sizeof(float)));
 
     m_mask160 = cv::Mat::zeros(1, 160 * 160, CV_32F);
     m_mask_eigen160 = Eigen::MatrixXf(1, 160 * 160);
     m_thresh_roi160 = cv::Rect(0, 0, 160, 160);
-    m_thresh_roisrc = cv::Rect(0, 0, m_param.src_w, m_param.src_h);
+    m_thresh_roisrc = cv::Rect(0, 0, param.src_w, param.src_h);
     m_downsample_scale = 160.f / 640;
-    m_mask_src = cv::Mat::zeros(m_param.src_h, m_param.src_w, CV_32F);
-    m_img_canvas = cv::Mat::zeros(cv::Size(m_param.src_w, m_param.src_h), CV_8UC3);
+    m_mask_src = cv::Mat::zeros(param.src_h, param.src_w, CV_32F);
+    m_img_canvas = cv::Mat::zeros(cv::Size(param.src_w, param.src_h), CV_8UC3);
 }
 
 YOLOv8Seg::~YOLOv8Seg() {
@@ -28,8 +53,9 @@ YOLOv8Seg::~YOLOv8Seg() {
     CHECK(cudaFree(m_output_src_device));
     CHECK(cudaFree(m_output_src_transpose_device));
     CHECK(cudaFree(m_output_seg_device));
-    delete[] m_output_objects_host;
-    delete[] m_output_seg_host;
+    CHECK(cudaFreeHost(m_output_objects_host));
+    CHECK(cudaFreeHost(m_output_seg_host));
+
     m_output_src_device = nullptr;
 }
 
@@ -47,7 +73,8 @@ bool YOLOv8Seg::init(const std::vector<unsigned char> &trtFile) {
     if (trtFile.empty()) {
         return false;
     }
-    this->m_runtime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(sample::gLogger.getTRTLogger()));
+    static SPDLOG_Logger logger;
+    this->m_runtime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger));
     if (m_runtime == nullptr) {
         return false;
     }
@@ -87,7 +114,10 @@ bool YOLOv8Seg::init(const std::vector<unsigned char> &trtFile) {
     CHECK(cudaMalloc(&m_output_src_device, m_param.batch_size * m_output_area * sizeof(float)));
     CHECK(cudaMalloc(&m_output_src_transpose_device, m_param.batch_size * m_output_area * sizeof(float)));
     CHECK(cudaMalloc(&m_output_seg_device, m_param.batch_size * m_output_seg_area * sizeof(float)));
-    m_output_seg_host = new float[m_param.batch_size * m_output_seg_area];
+
+
+    CHECK(cudaMallocHost((void **) &m_output_seg_host, m_param.batch_size * m_output_seg_area * sizeof(float)));
+
 
     float a = float(m_param.dst_h) / m_param.src_h;
     float b = float(m_param.dst_w) / m_param.src_w;
@@ -160,6 +190,7 @@ bool YOLOv8Seg::infer() {
 
 
 void YOLOv8Seg::postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+
     yolov8seg::transposeDevice(
             m_param,
             m_output_src_device,
@@ -188,13 +219,13 @@ void YOLOv8Seg::postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBat
             m_param.topK,
             m_output_obj_area
     );
-    CHECK(cudaMemcpy(
+    CHECK(cudaMemcpyAsync(
             m_output_objects_host,
             m_output_objects_device,
             m_param.batch_size * sizeof(float) * m_output_obj_area,
             cudaMemcpyDeviceToHost
     ));
-    CHECK(cudaMemcpy(
+    CHECK(cudaMemcpyAsync(
             m_output_seg_host,
             m_output_seg_device,
             m_param.batch_size * sizeof(float) * m_output_seg_area,
