@@ -127,7 +127,7 @@ namespace utils {
         float means[3] = {0.f, 0.f, 0.f};
         float stds[3] = {1.f, 1.f, 1.f};
 
-        float iou_thresh;
+        float iou_thresh = 0.5;
         float conf_thresh;
 
         int topK{300};

@@ -219,13 +219,13 @@ void YOLOv8Seg::postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBat
             m_param.topK,
             m_output_obj_area
     );
-    CHECK(cudaMemcpyAsync(
+    CHECK(cudaMemcpy(
             m_output_objects_host,
             m_output_objects_device,
             m_param.batch_size * sizeof(float) * m_output_obj_area,
             cudaMemcpyDeviceToHost
     ));
-    CHECK(cudaMemcpyAsync(
+    CHECK(cudaMemcpy(
             m_output_seg_host,
             m_output_seg_device,
             m_param.batch_size * sizeof(float) * m_output_seg_area,
