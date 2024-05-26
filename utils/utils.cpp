@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include"../utils/utils.h"
 
 void utils::saveBinaryFile(float* vec, size_t len, const std::string& file)
@@ -68,11 +69,10 @@ bool utils::setInputStream(const utils::InputStream& source, const std::string& 
 		img_format = imagePath.substr(imagePath.size()-4, 4);
 		if (img_format == ".png" || img_format == ".PNG")
 		{
-			sample::gLogWarning << "+-----------------------------------------------------------+" << std::endl;
-			sample::gLogWarning << "| If you use PNG format pictures, the file name must be eg: |" << std::endl;
-			sample::gLogWarning << "| demo0.png, demo1.png, demo2.png ......, but not demo.png. |" << std::endl;
-			sample::gLogWarning << "| The above rules are determined by OpenCV.					|" << std::endl;
-			sample::gLogWarning << "+-----------------------------------------------------------+" << std::endl;
+
+            SPDLOG_WARN("If you use PNG format pictures, the file name must be eg: demo0.png, demo1.png, demo2.png ......, but not demo.png.");
+            SPDLOG_WARN("The above rules are determined by OpenCV.");
+
 		}
 		capture.open(imagePath); //cv::CAP_IMAGES : !< OpenCV Image Sequence (e.g. img_%02d.jpg)
 		param.batch_size = 1;
