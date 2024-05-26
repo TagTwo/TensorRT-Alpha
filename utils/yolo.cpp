@@ -103,24 +103,26 @@ void yolo::YOLO::check() {
     for (auto layer_name: m_param.input_output_names) {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_engine->getBindingDimensions(idx);
-        SPDLOG_INFO("idx = {}, {}, ", idx, layer_name);
-        for (int i = 0; i < dims.nbDims; i++) {
-            SPDLOG_INFO("{}", dims.d[i]);
-        }
+        std::stringstream ss;
 
+
+        ss << "idx = " << idx << ", " << layer_name << ", ";
+        for (int i = 0; i < dims.nbDims; i++) {
+            ss << dims.d[i] << ", ";
+        }
+        SPDLOG_INFO(ss.str());
     }
 
     SPDLOG_INFO("the context's info:");
     for (auto layer_name: m_param.input_output_names) {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_context->getBindingDimensions(idx);
-
-        SPDLOG_INFO("idx = {}, {}, ", idx, layer_name);
+        std::stringstream ss;
+        ss << "idx = " << idx << ", " << layer_name << ", ";
         for (int i = 0; i < dims.nbDims; i++) {
-            SPDLOG_INFO("{}", dims.d[i]);
+            ss << dims.d[i] << ", ";
         }
-
-        SPDLOG_INFO("");
+        SPDLOG_INFO(ss.str());
     }
 }
 
