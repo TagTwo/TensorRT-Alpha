@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include"yolo.h"
 
 yolo::YOLO::YOLO(const utils::InitParameter &param) : m_param(param) {
@@ -47,8 +48,9 @@ bool yolo::YOLO::init(const std::vector<unsigned char> &trtFile) {
     if (trtFile.empty()) {
         return false;
     }
+    static SPDLOG_Logger logger;
     std::unique_ptr<nvinfer1::IRuntime> runtime =
-            std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(sample::gLogger.getTRTLogger()));
+            std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger));
     if (runtime == nullptr) {
         return false;
     }
@@ -96,25 +98,29 @@ void yolo::YOLO::check() {
     int idx;
     nvinfer1::Dims dims;
 
-    sample::gLogInfo << "the engine's info:" << std::endl;
+
+    SPDLOG_INFO("the engine's info:");
     for (auto layer_name: m_param.input_output_names) {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_engine->getBindingDimensions(idx);
-        sample::gLogInfo << "idx = " << idx << ", " << layer_name << ": ";
+        SPDLOG_INFO("idx = {}, {}, ", idx, layer_name);
         for (int i = 0; i < dims.nbDims; i++) {
-            sample::gLogInfo << dims.d[i] << ", ";
+            SPDLOG_INFO("{}", dims.d[i]);
         }
-        sample::gLogInfo << std::endl;
+
     }
-    sample::gLogInfo << "the context's info:" << std::endl;
+
+    SPDLOG_INFO("the context's info:");
     for (auto layer_name: m_param.input_output_names) {
         idx = this->m_engine->getBindingIndex(layer_name.c_str());
         dims = this->m_context->getBindingDimensions(idx);
-        sample::gLogInfo << "idx = " << idx << ", " << layer_name << ": ";
+
+        SPDLOG_INFO("idx = {}, {}, ", idx, layer_name);
         for (int i = 0; i < dims.nbDims; i++) {
-            sample::gLogInfo << dims.d[i] << ", ";
+            SPDLOG_INFO("{}", dims.d[i]);
         }
-        sample::gLogInfo << std::endl;
+
+        SPDLOG_INFO("");
     }
 }
 

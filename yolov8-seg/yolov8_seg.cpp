@@ -4,26 +4,6 @@
 
 using namespace TagTwo::AI;
 
-class SPDLOG_Logger : public sample::Logger {
-
-    void log(Severity severity, const char *msg) noexcept override {
-        if (severity == Severity::kINFO) {
-            SPDLOG_INFO("[TRT] {}", msg);
-        } else if (severity == Severity::kWARNING) {
-            SPDLOG_WARN("[TRT] {}", msg);
-        } else if (severity == Severity::kERROR) {
-            SPDLOG_ERROR("[TRT] {}", msg);
-
-        } else if (severity == Severity::kINTERNAL_ERROR) {
-            SPDLOG_CRITICAL("[TRT] {}", msg);
-        } else {
-            SPDLOG_DEBUG("[TRT] {}", msg);
-        }
-
-
-    }
-
-};
 
 YOLOv8Seg::YOLOv8Seg(const utils::InitParameter &param) : yolo::YOLO(param) {
     m_output_objects_device = nullptr;
