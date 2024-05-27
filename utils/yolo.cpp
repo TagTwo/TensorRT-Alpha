@@ -126,7 +126,7 @@ void yolo::YOLO::check() {
     }
 }
 
-void yolo::YOLO::copy(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+void yolo::YOLO::copy(const std::vector<cv::Mat> &imgsBatch) {
 #if 0
     cv::Mat img_fp32 = cv::Mat::zeros(imgsBatch[0].size(), CV_32FC3); // todo 
     cudaHostRegister(img_fp32.data, img_fp32.elemSize() * img_fp32.total(), cudaHostRegisterPortable);
@@ -157,7 +157,7 @@ void yolo::YOLO::copy(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
     // 2. Todo
     unsigned char *pi = m_input_src_device;
     for (size_t i = 0; i < imgsBatch.size(); i++) {
-        CHECK(cudaMemcpy(pi, imgsBatch[i]->data, sizeof(unsigned char) * 3 * m_param.src_h * m_param.src_w,
+        CHECK(cudaMemcpy(pi, imgsBatch[i].data, sizeof(unsigned char) * 3 * m_param.src_h * m_param.src_w,
                          cudaMemcpyHostToDevice));
         pi += 3 * m_param.src_h * m_param.src_w;
     }
@@ -178,7 +178,7 @@ void yolo::YOLO::copy(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
 #endif
 }
 
-void yolo::YOLO::preprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+void yolo::YOLO::preprocess(const std::vector<cv::Mat> &imgsBatch) {
     resizeDevice(
             m_param.batch_size,
             m_input_src_device,
@@ -229,7 +229,7 @@ bool yolo::YOLO::infer() {
     return context;
 }
 
-void yolo::YOLO::postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+void yolo::YOLO::postprocess(const std::vector<cv::Mat> &imgsBatch) {
     decodeDevice(
             m_param,
             m_output_src_device,

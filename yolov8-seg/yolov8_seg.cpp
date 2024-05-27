@@ -115,7 +115,7 @@ bool YOLOv8Seg::init(const std::vector<unsigned char> &trtFile) {
     return true;
 }
 
-void YOLOv8Seg::preprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+void YOLOv8Seg::preprocess(const std::vector<cv::Mat> &imgsBatch) {
     resizeDevice(
             m_param.batch_size,
             m_input_src_device,
@@ -169,7 +169,7 @@ bool YOLOv8Seg::infer() {
 }
 
 
-void YOLOv8Seg::postprocess(const std::vector<std::shared_ptr<cv::Mat>> &imgsBatch) {
+void YOLOv8Seg::postprocess(const std::vector<cv::Mat> &imgsBatch) {
 
     yolov8seg::transposeDevice(
             m_param,
