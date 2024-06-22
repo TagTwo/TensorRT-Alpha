@@ -127,30 +127,7 @@ void yolo::YOLO::check() {
 }
 
 void yolo::YOLO::copy(const std::vector<cv::Mat> &imgsBatch) {
-#if 0
-    cv::Mat img_fp32 = cv::Mat::zeros(imgsBatch[0].size(), CV_32FC3); // todo 
-    cudaHostRegister(img_fp32.data, img_fp32.elemSize() * img_fp32.total(), cudaHostRegisterPortable);
-    float* pi = m_input_src_device;
-    for (size_t i = 0; i < imgsBatch.size(); i++)
-    {
-        imgsBatch[i].convertTo(img_fp32, CV_32FC3);
-        CHECK(cudaMemcpy(pi, img_fp32.data, sizeof(float) * 3 * m_param.src_h * m_param.src_w, cudaMemcpyHostToDevice));
-        pi += 3 * m_param.src_h * m_param.src_w;
-    }
-    cudaHostUnregister(img_fp32.data);
-#endif
 
-#if 0 // for Nvidia TX2
-    cv::Mat img_fp32 = cv::Mat::zeros(imgsBatch[0].size(), CV_32FC3); // todo 
-    float* pi = m_input_src_device;
-    for (size_t i = 0; i < imgsBatch.size(); i++)
-    {
-        std::vector<float> img_vec = std::vector<float>(imgsBatch[i].reshape(1, 1));
-        imgsBatch[i].convertTo(img_fp32, CV_32FC3);
-        CHECK(cudaMemcpy(pi, img_fp32.data, sizeof(float) * 3 * m_param.src_h * m_param.src_w, cudaMemcpyHostToDevice));
-        pi += 3 * m_param.src_h * m_param.src_w;
-    }
-#endif
 
     // update 20230302, faster. 
     // 1. move uint8_to_float in cuda kernel function. For 8*3*1920*1080, cost time 15ms -> 3.9ms
@@ -162,20 +139,7 @@ void yolo::YOLO::copy(const std::vector<cv::Mat> &imgsBatch) {
         pi += 3 * m_param.src_h * m_param.src_w;
     }
 
-#if 0 // cuda stream
-    cudaStream_t streams[32];
-    for (int i = 0; i < imgsBatch.size(); i++)
-    {
-        CHECK(cudaStreamCreate(&streams[i]));
-    }
-    unsigned char* pi = m_input_src_device;
-    for (size_t i = 0; i < imgsBatch.size(); i++)
-    {
-        CHECK(cudaMemcpyAsync(pi, imgsBatch[i].data, sizeof(unsigned char) * 3 * m_param.src_h * m_param.src_w, cudaMemcpyHostToDevice, streams[i]));
-        pi += 3 * m_param.src_h * m_param.src_w;
-    }
-    CHECK(cudaDeviceSynchronize());
-#endif
+
 }
 
 void yolo::YOLO::preprocess(const std::vector<cv::Mat> &imgsBatch) {
@@ -191,15 +155,15 @@ void yolo::YOLO::preprocess(const std::vector<cv::Mat> &imgsBatch) {
             m_dst2src
     );
 
-    bgr2rgbDevice(
-            m_param.batch_size,
-            m_input_resize_device,
-            m_param.dst_w,
-            m_param.dst_h,
-            m_input_rgb_device,
-            m_param.dst_w,
-            m_param.dst_h
-    );
+//    bgr2rgbDevice(
+//            m_param.batch_size,
+//            m_input_resize_device,
+//            m_param.dst_w,
+//            m_param.dst_h,
+//            m_input_rgb_device,
+//            m_param.dst_w,
+//            m_param.dst_h
+//    );
 
     normDevice(
             m_param.batch_size,
