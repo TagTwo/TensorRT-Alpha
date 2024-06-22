@@ -127,18 +127,18 @@ void YOLOv8Seg::preprocess(const std::vector<cv::Mat> &imgsBatch) {
             114,
             m_dst2src
     );
-    bgr2rgbDevice(
-            m_param.batch_size,
-            m_input_resize_device,
-            m_param.dst_w,
-            m_param.dst_h,
-            m_input_rgb_device,
-            m_param.dst_w,
-            m_param.dst_h
-    );
+//    bgr2rgbDevice(
+//            m_param.batch_size,
+//            m_input_resize_device,
+//            m_param.dst_w,
+//            m_param.dst_h,
+//            m_input_rgb_device,
+//            m_param.dst_w,
+//            m_param.dst_h
+//    );
     normDevice(
             m_param.batch_size,
-            m_input_rgb_device,
+            m_input_resize_device, //m_input_rgb_device,
             m_param.dst_w,
             m_param.dst_h,
             m_input_norm_device,
@@ -336,120 +336,4 @@ void YOLOv8Seg::getObjects(
         filledBoxes++;
     }
     objects.resize(filledBoxes);
-}
-
-void YOLOv8Seg::showAndSave(
-        const std::vector<std::string> &classNames,
-        const int &cvDelayTime,
-        const std::vector<cv::Mat> &imgsBatch
-) {
-
-    cv::Point bbox_points[1][4];
-    const cv::Point *bbox_point0[1] = {bbox_points[0]};
-    int num_points[] = {4};
-
-    std::vector<Object> objects;
-
-    for (size_t bi = 0; bi < imgsBatch.size(); bi++) {
-
-        getObjects(objects, bi);
-
-        for (auto &object: objects) {
-
-            const auto &color = utils::Colors::color80.at(object.label);
-
-
-#if CV_VERSION_MAJOR >= 4 && CV_VERSION_MINOR >= 7
-            // for opencv >=4.7(faster)
-            cv::cvtColor(object.boxMask, object.boxMask, cv::COLOR_GRAY2BGR);
-            object.boxMask.setTo(color, object.boxMask);
-            cv::addWeighted(
-                    object.boxMask,
-                    0.45,
-                    m_img_canvas(object.rect),
-                    1.0,
-                    0.,
-                    m_img_canvas(object.rect)
-            );
-# else
-            // for opencv >=3.2.0
-            cv::Mat mask_instance_bgr;
-            cv::cvtColor(object.boxMask, mask_instance_bgr, cv::COLOR_GRAY2BGR);
-            mask_instance_bgr.setTo(color, object.boxMask);
-            cv::addWeighted(
-                    mask_instance_bgr,
-                    0.45,
-                    m_img_canvas(object.rect),
-                    1.0,
-                    0.,
-                    m_img_canvas(object.rect)
-            );
-#endif
-
-
-            if (m_param.is_save || m_param.is_show) {
-
-                // label's info
-                cv::rectangle(
-                        imgsBatch[bi],
-                        object.rect,
-                        color,
-                        2,
-                        cv::LINE_AA
-                );
-
-                cv::String det_info = m_param.class_names[object.label] + " " + cv::format("%.4f", object.probability);
-
-
-                bbox_points[0][0] = cv::Point(
-                        object.rect.x,
-                        object.rect.y
-                );
-
-                bbox_points[0][1] = cv::Point(
-                        object.rect.x + det_info.size() * m_param.char_width,
-                        object.rect.y
-                );
-
-                bbox_points[0][2] = cv::Point(
-                        object.rect.x + det_info.size() * m_param.char_width,
-                        object.rect.y - m_param.det_info_render_width
-                );
-
-                bbox_points[0][3] = cv::Point(
-                        object.rect.x,
-                        object.rect.y - m_param.det_info_render_width
-                );
-
-
-                cv::fillPoly(
-                        imgsBatch[bi],
-                        bbox_point0,
-                        num_points,
-                        1,
-                        color
-                );
-                cv::putText(
-                        imgsBatch[bi],
-                        det_info,
-                        bbox_points[0][0],
-                        cv::FONT_HERSHEY_DUPLEX,
-                        m_param.font_scale,
-                        cv::Scalar(255, 255, 255),
-                        1,
-                        cv::LINE_AA
-                );
-
-            }
-
-
-        }
-        if (m_param.is_show) {
-            cv::imshow(m_param.winname, imgsBatch[bi] + m_img_canvas);
-            cv::waitKey(cvDelayTime);
-        }
-        if (m_param.is_save) {
-            cv::imwrite(m_param.save_path + utils::getTimeStamp() + ".jpg", imgsBatch[bi] + m_img_canvas);
-        }
-    }
 }
